@@ -19,7 +19,3 @@ def _generate_session_name(length: int=10) -> str:
 
 if __name__ == '__main__':
     Application(_generate_session_name(5)).start()
-    
-
-# Need to be done:
-# 1. Fix frame size parameters
