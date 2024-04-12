@@ -1,6 +1,3 @@
-from app.app import Application
-
-
 def generate_session_name(length=10):
     """Generates the session name for the application.
     
@@ -21,6 +18,7 @@ def generate_session_name(length=10):
     return ''.join(choice(chars) for _ in range(length))
 
 if __name__ == '__main__':
+    from app.app import Application
     app = Application()
     app.acquire_lock()
     
@@ -28,4 +26,6 @@ if __name__ == '__main__':
     app.start(session_name)
     
     app.release_lock()
+    
+    from sys import exit
     exit(0)

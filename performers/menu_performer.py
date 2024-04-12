@@ -383,4 +383,4 @@ class MenuPerformer():
         
         if command.returncode == -1:
             message = 'Файл не найден.'
-            Dialog().show_error(message, root)
+            Dialog(self.lp).show_error(message, root)
