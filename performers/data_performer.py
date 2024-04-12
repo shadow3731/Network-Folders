@@ -401,8 +401,9 @@ class DataPerformer():
         
     def get_base_path(self):        
         try:
-            import sys
-            return f'{sys._MEIPASS}\\Network Folders\\'
+            # import sys
+            # return f'{sys._MEIPASS}\\Network Folders\\'
+            return os.getcwd()
         except Exception:
             return os.path.abspath('.')
         
