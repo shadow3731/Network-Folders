@@ -1,8 +1,4 @@
-import os
 from tkinter import messagebox as mb
-from tkinter import filedialog as fd
-
-from performers.logs_performer import LogsPerformer
 
 
 class Dialog():
@@ -12,12 +8,22 @@ class Dialog():
         lp (LogsPerformer): The LogsPerformer object for app logging.
     """
     
-    def __init__(self, lp: LogsPerformer):
+    def __init__(self, lp=None):
         """Initializes Dialog instance."""
         
         self.lp = lp
-    
-    def show_error(self, message: str):
+        
+    def show_info(self, message, root):
+        mb.showinfo(
+            parent=root,
+            title='Информация',
+            message=message,
+        )
+        
+        self.lp.log(self.lp.INFO, self.lp.SHOW_INFO_DIALOG_MESS_ID, (message,))
+
+        
+    def show_error(self, message, root):
         """Shows the 'askerror' dialog window with certain message.
         
         Args:
@@ -25,13 +31,14 @@ class Dialog():
         """
         
         mb.showerror(
+            parent=root,
             title='Ошибка',
-            message=message
+            message=message,
         )
         
         self.lp.log(self.lp.INFO, self.lp.SHOW_ERR_DIALOG_MESS_ID, (message,))
     
-    def open_file_dialog(self, title: str) -> str:
+    def open_file_dialog(self, title, root):
         """Opens bult-in file dialog window 
         to find a file with some data.
         
@@ -49,11 +56,14 @@ class Dialog():
             str: File name of the JSON-file with the data.
         """
         
+        import os
+        from tkinter import filedialog as fd
         file = fd.askopenfile(
+            parent=root,
             title=title,
             initialdir=os.path.expanduser('~/Desktop'),
             defaultextension='.json',
-            filetypes=[('JSON файлы', '*.json'), ('Все файлы', '*.*')]
+            filetypes=[('JSON файлы', '*.json'), ('Все файлы', '*.*')],
         )
         
         if file:
@@ -62,6 +72,6 @@ class Dialog():
                 
             else:
                 message = "Файл визуализации должен иметь расширение .json."
-                self.show_error(message)
+                self.show_error(message, root)
                 
         return None

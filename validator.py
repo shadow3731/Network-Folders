@@ -1,20 +1,16 @@
-from dialog import Dialog
-from performers.logs_performer import LogsPerformer
-
-
-class Converter():
+class Validator():
     """The class for converting the appearance data taken from a file to the correct dictionary.
     
     Attributes:
         lp (LogsPerformer): The LogsPerformer object for app logging.
     """
     
-    def __init__(self, lp: LogsPerformer):
+    def __init__(self, lp=None):
         """Initializes Application instance."""
         
         self.lp = lp
     
-    def return_valid_dictionary(self, raw_data: dict, return_null: bool=True) -> dict: 
+    def validate_app_data(self, raw_data, root): 
         """Returns correct dictionary of the application data.
         
         Creates new application data based on the one taken from a file.
@@ -26,14 +22,16 @@ class Converter():
         
         Args:
             raw_data (dict): The raw application data taken from a file.
-            return_null (bool, optional): Defines wether return None or make a dictionary with default values. Defaults to True.
+            return_none (bool, optional): Defines wether return None or make a dictionary with default values. Defaults to True.
             
         Returns:
             dict: The valid application data with correct values and its types.
         """
         
-        self.lp.log(self.lp.INFO, self.lp.CONV_A_DATA_MESS_ID)
+        self.lp.log(self.lp.INFO, self.lp.VALID_A_DATA_MESS_ID)
         
+        error_stack = []
+                
         if not raw_data:
             raw_data = {}
         
@@ -62,12 +60,8 @@ class Converter():
                 data['window']['button_height'] = 40 if not raw_data['window'].get('button_height') else int(raw_data['window']['button_height'])
             
             except ValueError as e:
-                if return_null:
-                    self._redirect_error(e)
-                    return None
-                
-                else:
-                    self._put_defaults(
+                error_stack.append(e)
+                self._put_defaults(
                         data=data, 
                         flag='window'
                     )
@@ -82,12 +76,8 @@ class Converter():
             data['dir_open_timeout'] = 10.0 if not raw_data.get('dir_open_timeout') else float(raw_data['dir_open_timeout'])
             
         except ValueError as e:
-            if return_null:
-                self._redirect_error(e)
-                return None
-            
-            else:
-                self._put_defaults(
+            error_stack.append(e)
+            self._put_defaults(
                     data=data, 
                     flag='dir_open_timeout'
                 )
@@ -113,12 +103,8 @@ class Converter():
                                 data['groups'][f'group{i}']['buttons'][f'button{j}']['size'] = 1 if not raw_data['groups'][f'group{i}']['buttons'][f'button{j}'].get('size') else int(raw_data['groups'][f'group{i}']['buttons'][f'button{j}']['size'])
                             
                             except ValueError as e:
-                                if return_null:
-                                    self._redirect_error(e)
-                                    return None
-                                
-                                else:
-                                    data['groups'][f'group{i}']['buttons'][f'button{j}']['size'] = 1
+                                error_stack.append(e)
+                                data['groups'][f'group{i}']['buttons'][f'button{j}']['size'] = 1
                             
                             data['groups'][f'group{i}']['buttons'][f'button{j}']['bg_color'] = 'white' if not raw_data['groups'][f'group{i}']['buttons'][f'button{j}'].get('bg_color') else raw_data['groups'][f'group{i}']['buttons'][f'button{j}']['bg_color']
                             data['groups'][f'group{i}']['buttons'][f'button{j}']['fg_color'] = 'black' if not raw_data['groups'][f'group{i}']['buttons'][f'button{j}'].get('fg_color') else raw_data['groups'][f'group{i}']['buttons'][f'button{j}']['fg_color']
@@ -133,23 +119,90 @@ class Converter():
                 else:
                     break
                 
-        self.lp.log(self.lp.INFO, self.lp.CONV_A_DATA_SUCC_MESS_ID)
+        if len(error_stack) > 0:
+            self._redirect_error(root, error_stack)
+        else:
+            self.lp.log(self.lp.INFO, self.lp.VALID_A_DATA_SUCC_MESS_ID)
             
         return data
     
-    def _redirect_error(self, e: ValueError):
+    def check_app_data(self, root, raw_data):
+        self.lp.log(self.lp.INFO, self.lp.VALID_A_DATA_MESS_ID)
+        
+        error_stack = []
+        
+        if raw_data:       
+            if raw_data.get('window'):
+                keys = [
+                        'width', 
+                        'padding', 
+                        'r_padding', 
+                        'button_width', 
+                        'button_height',
+                ]
+                
+                for key in keys:
+                    try:
+                        if raw_data['window'].get(key):
+                            int(raw_data['window'][key])
+                    except ValueError as e:
+                        error_stack.append(str(e))
+                    
+            if raw_data.get('dir_open_timeout'):
+                try:
+                    float(raw_data['dir_open_timeout'])
+                except ValueError as e:
+                    error_stack.append(str(e))
+                    
+            if raw_data.get('groups'):
+                i = 1
+                while True:
+                    if raw_data['groups'].get(f'group{i}') and raw_data['groups'][f'group{i}'].get('buttons'):
+                        j = 1
+                        while True:
+                            if raw_data['groups'][f'group{i}']['buttons'].get(f'button{j}') and raw_data['groups'][f'group{i}']['buttons'][f'button{j}'].get('size'):
+                                try:
+                                    int(raw_data['groups'][f'group{i}']['buttons'][f'button{j}']['size'])
+                                except ValueError as e:
+                                    error_stack.append(str(e))
+
+                                j += 1
+                                    
+                            else:
+                                break
+                                    
+                        i += 1
+                        
+                    else:
+                        break
+            
+        else:
+            error_stack.append('Файл конфигурации не может быть пустым.')
+            
+        if len(error_stack) > 0:
+            self._redirect_error(root, error_stack)
+            return False
+        
+        self.lp.log(self.lp.INFO, self.lp.VALID_A_DATA_SUCC_MESS_ID)
+        
+        return True
+    
+    def _redirect_error(self, root, errors):
         """Redirects error message and description to show them to the user.
 
         Args:
             e (ValueError): Error description.
         """
         
-        self.lp.log(self.lp.ERR, self.lp.CONV_A_DATA_FAIL_MESS_ID, (e,))
+        from dialog import Dialog
+        parts = '\n'.join(errors)
+        message = f"Обнаружено недопустимое значение параметров в файле конфигурации. Будут выгружены значения из локального файла конфигурации.\n\n{parts}"
         
-        message = f"Обнаружено недопустимое значение параметров в файле конфигурации. Будут выгружены значения из локального файла конфигурации.\n\n{e}"
-        Dialog(self.lp).show_error(message)
+        self.lp.log(self.lp.ERR, self.lp.VALID_A_DATA_FAIL_MESS_ID, (message,))
         
-    def _put_defaults(self, data: dict, flag: str):
+        Dialog(self.lp).show_error(message, root)
+        
+    def _put_defaults(self, data, flag):
         """Puts some deafault values to the application data.
 
         Args:
@@ -157,7 +210,7 @@ class Converter():
             flag (str): The group of parameters that need to set default values into.
         """
         
-        self.lp.log(self.lp.WARN, self.lp.CONV_A_DATA_DEFAULT_MESS_ID)
+        self.lp.log(self.lp.WARN, self.lp.VALID_A_DATA_DEFAULT_MESS_ID)
         
         if flag == 'credentials':
             data['credentials']['username'] = ''

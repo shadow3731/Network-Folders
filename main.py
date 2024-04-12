@@ -1,8 +1,7 @@
-import random, string
-
 from app.app import Application
 
-def _generate_session_name(length: int=10) -> str:
+
+def generate_session_name(length=10):
     """Generates the session name for the application.
     
     This name contains letters, numbers and symbols.
@@ -14,8 +13,19 @@ def _generate_session_name(length: int=10) -> str:
         str: The session name.
     """
     
-    chars = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(random.choice(chars) for _ in range(length))
+    from random import choice
+    from string import ascii_letters, digits, punctuation
+    
+    
+    chars = ascii_letters + digits + punctuation
+    return ''.join(choice(chars) for _ in range(length))
 
 if __name__ == '__main__':
-    Application(_generate_session_name(5)).start()
+    app = Application()
+    app.acquire_lock()
+    
+    session_name = generate_session_name(5)
+    app.start(session_name)
+    
+    app.release_lock()
+    exit(0)

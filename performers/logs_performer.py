@@ -1,5 +1,4 @@
 import logging
-from typing import Dict
 
 
 class LogsPerformer():
@@ -12,7 +11,7 @@ class LogsPerformer():
         message_map (Dict[int, str]): The dictionary of logs messages
     """
 
-    def __init__(self, filename: str='log.log'):
+    def __init__(self, filename='log.log'):
         """Initializes LogsPerformer instance."""
         
         file_handler = logging.FileHandler(
@@ -29,8 +28,11 @@ class LogsPerformer():
         
         (
             self.APP_LAUNCH_MESS_ID,
+            self.VER_LAUNCH_MESS_ID,
             self.TIME_LAUNCH_MESS_ID,
             self.WARN_TIME_LAUNCH_MESS_ID,
+            self.CREATE_LOADER_MESS_ID,
+            self.DESTROY_LOADER_MESS_ID,
             self.CREATE_ROOT_MESS_ID,
             self.DESTROY_ROOT_MESS_ID,
             self.LOAD_S_DATA_MESS_ID,
@@ -46,6 +48,8 @@ class LogsPerformer():
             self.GOT_SERV_NAME_MESS_ID,
             self.NO_SERV_NAME_MESS_ID,
             self.LOAD_S_DATA_SUCC_MESS_ID,
+            self.CREATE_LOADER_SUCC_MESS_ID,
+            self.DESTROY_LOADER_SUCC_MESS_ID,
             self.CREATE_ROOT_SUCC_MESS_ID,
             self.DESTROY_ROOT_SUCC_MESS_ID,
             self.LOAD_A_DATA_FROM_SERV_MESS_ID,
@@ -55,17 +59,26 @@ class LogsPerformer():
             self.LOAD_A_DATA_TRY_LOCAL_MESS_ID,
             self.LOAD_A_DATA_LOCAL_SUCC_MESS_ID,
             self.LOAD_A_DATA_LOCAL_FAIL_MESS_ID,
+            self.SAVE_A_DATA_MESS_ID,
+            self.SAVE_A_DATA_SUCC_MESS_ID,
+            self.SAVE_A_DATA_FAIL_MESS_ID,
+            self.CHECK_A_DATA_UPDATED_MESS_ID,
+            self.A_DATA_UPDATABLE_MESS_ID,
+            self.A_DATA_NOT_UPDATABLE_MESS_ID,
+            self.CHECK_A_DATA_UPDATED_FAIL_MESS_ID,
+            self.UPDATE_A_DATA_MESS_ID,
             self.RESTART_APP_MESS_ID,
             self.IMPORT_CREDS_FROM_A_DATA_MESS_ID,
-            self.CONV_A_DATA_MESS_ID,
-            self.CONV_A_DATA_FAIL_MESS_ID,
-            self.CONV_A_DATA_SUCC_MESS_ID,
-            self.CONV_A_DATA_DEFAULT_MESS_ID,
+            self.VALID_A_DATA_MESS_ID,
+            self.VALID_A_DATA_FAIL_MESS_ID,
+            self.VALID_A_DATA_SUCC_MESS_ID,
+            self.VALID_A_DATA_DEFAULT_MESS_ID,
             self.SHOW_ROOT_PREPARE_MESS_ID,
             self.SHOW_ROOT_MESS_ID,
             self.SHOW_MENU_MESS_ID,
             self.SHOW_MENU_SUCC_MESS_ID,
             self.OPEN_DIALOG_LOAD_A_DATA_MESS_ID,
+            self.SHOW_INFO_DIALOG_MESS_ID,
             self.SHOW_ERR_DIALOG_MESS_ID,
             self.GOT_A_DATA_FILEDIR_MESS_ID,
             self.EDIT_S_DATA_MESS_ID,
@@ -92,15 +105,20 @@ class LogsPerformer():
             self.RUN_CMD_SUCC_MESS_ID,
             self.RUN_CMD_FAIL_MESS_ID,
             self.S_DATA_EXISTS_MESS_ID,
+            self.CONFIG_LOADER_MESS_ID,
+            self.CONFIG_LOADER_SUCC_MESS_ID,
             self.CONFIG_ROOT_MESS_ID,
             self.CONFIG_ROOT_WIDTH_ERR_MESS_ID,
             self.CONFIG_ROOT_SUCC_MESS_ID,
             self.APP_CLOSED_MESS_ID,
-        ) = range(68)
+        ) = range(84)
         
         self.message_map = {
             self.APP_LAUNCH_MESS_ID: (
-                'Application with session name: "{}" is launching (version: "{}")...'
+                'Application with session name: "{}" is launching...'
+            ),
+            self.VER_LAUNCH_MESS_ID: (
+                'Application version: {}'
             ),
             self.TIME_LAUNCH_MESS_ID: (
                 'Application launched. Launch duration: {} s.'
@@ -108,6 +126,12 @@ class LogsPerformer():
             self.WARN_TIME_LAUNCH_MESS_ID: (
                 'Launch time should not be more than {} s. '
                 'Please check system performance.'
+            ),
+            self.CREATE_LOADER_MESS_ID: (
+                'Creating application loader window...'
+            ),
+            self.DESTROY_LOADER_MESS_ID: (
+                'Destroying application loader window...'
             ),
             self.CREATE_ROOT_MESS_ID: (
                 'Creating application root window...'    
@@ -154,6 +178,12 @@ class LogsPerformer():
             self.LOAD_S_DATA_SUCC_MESS_ID: (
                 'The service data was loaded from "{}" directory.'
             ),
+            self.CREATE_LOADER_SUCC_MESS_ID: (
+                'The application loader window is created.'
+            ),
+            self.DESTROY_LOADER_SUCC_MESS_ID: (
+                'The application loader window is destroyed.'
+            ),
             self.CREATE_ROOT_SUCC_MESS_ID: (
                 'The application root window is created.'
             ),
@@ -181,22 +211,46 @@ class LogsPerformer():
             self.LOAD_A_DATA_LOCAL_FAIL_MESS_ID: (
                 'The application data was not loaded from "{}" directory.\n{}'
             ),
+            self.SAVE_A_DATA_MESS_ID: (
+                'Saving the application data into "{}" directory...'
+            ),
+            self.SAVE_A_DATA_SUCC_MESS_ID: (
+                'The application data saved into "{}" directory.'
+            ),
+            self.SAVE_A_DATA_FAIL_MESS_ID: (
+                'The application data was not saved into "{}" directory.\n{}'
+            ),
+            self.CHECK_A_DATA_UPDATED_MESS_ID: (
+                'Checking if the application data was modified...'
+            ),
+            self.A_DATA_UPDATABLE_MESS_ID: (
+                'The application data was modified.'
+            ),
+            self.A_DATA_NOT_UPDATABLE_MESS_ID: (
+                'The application data was not modified'
+            ),
+            self.CHECK_A_DATA_UPDATED_FAIL_MESS_ID: (
+                'The application cannot check if the application data was modified.\n{}'
+            ),
+            self.UPDATE_A_DATA_MESS_ID: (
+                'Updating the application data'
+            ),
             self.RESTART_APP_MESS_ID: (
                 'Application is restarting...'
             ),
             self.IMPORT_CREDS_FROM_A_DATA_MESS_ID: (
                 'Importing network credentials from the application data to the service data...'
             ),
-            self.CONV_A_DATA_MESS_ID: (
-                'Converting incoming application data...'
+            self.VALID_A_DATA_MESS_ID: (
+                'Validating incoming application data...'
             ),
-            self.CONV_A_DATA_FAIL_MESS_ID: (
-                'Application could not convert the application data.\n{}'
+            self.VALID_A_DATA_FAIL_MESS_ID: (
+                'Application could not validate the application data.\n{}'
             ),
-            self.CONV_A_DATA_SUCC_MESS_ID: (
-                'Application converted the application data.'
+            self.VALID_A_DATA_SUCC_MESS_ID: (
+                'Application validated the application data.'
             ),
-            self.CONV_A_DATA_DEFAULT_MESS_ID: (
+            self.VALID_A_DATA_DEFAULT_MESS_ID: (
                 'Application found invalid values that can be replaced by default ones.'
             ),
             self.SHOW_ROOT_PREPARE_MESS_ID: (
@@ -213,6 +267,9 @@ class LogsPerformer():
             ),
             self.OPEN_DIALOG_LOAD_A_DATA_MESS_ID: (
                 'Opening file dialog window to import the application data...'
+            ),
+            self.SHOW_INFO_DIALOG_MESS_ID: (
+                'Application showed an information dialog window with message: "{}"'
             ),
             self.SHOW_ERR_DIALOG_MESS_ID: (
                 'Application showed an error dialog window with message: "{}"'
@@ -284,32 +341,35 @@ class LogsPerformer():
                 'Running command: "{}"...'
             ),
             self.RUN_CMD_SUCC_MESS_ID: (
-                'Application successfully performed the command: {}.'
+                'Application successfully performed the command.'
             ),
             self.RUN_CMD_FAIL_MESS_ID: (
-                'Application could not perform the command: {}.'
+                'Application could not perform the command.'
             ),
             self.S_DATA_EXISTS_MESS_ID: (
                 'The service data file exists.'
+            ),
+            self.CONFIG_LOADER_MESS_ID: (
+                'Application configuring the loader window...'
+            ),
+            self.CONFIG_LOADER_SUCC_MESS_ID: (
+                'Application configured the loader window.'
             ),
             self.CONFIG_ROOT_MESS_ID: (
                 'Application configuring the root window...'
             ),
             self.CONFIG_ROOT_WIDTH_ERR_MESS_ID: (
-                'Invalid value for the root window width: {}.'
-            ),
-            self.CONFIG_ROOT_SUCC_MESS_ID: (
-                'Application configured the root window.'
+                'Invalid value for the root window width {}.'
             ),
             self.CONFIG_ROOT_SUCC_MESS_ID: (
                 'Application configured the root window.'
             ),
             self.APP_CLOSED_MESS_ID: (
-                'Application with session name: "{}" is closed.'
+                'Application with session name "{}" is closed.'
             ),
         }
         
-    def log(self, level: int, message_id: int, vars: tuple=None):
+    def log(self, level, message_id, vars=None):
         """Logs about an app event.
         
         Gets the logging instance according to a log level 
@@ -329,7 +389,7 @@ class LogsPerformer():
         
         log_functions.get(level, None)(self._get_message_by_id(message_id, vars))
         
-    def _get_message_by_id(self, id: int, vars: tuple=None) -> str:
+    def _get_message_by_id(self, id, vars=None):
         """Compose a log message by the identifier.
         
         If an identifier is worng or optional variables are not match 

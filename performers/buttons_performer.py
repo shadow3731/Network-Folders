@@ -1,12 +1,9 @@
 import tkinter as tk
-from tkinter.font import Font
-import _tkinter, re, subprocess, platform, threading, socket
-from typing import Optional, Union
+import _tkinter, re, subprocess
 
-from cursor import Cursor
+import gevent.queue
+
 from dialog import Dialog
-from performers.data_performer import DataPerformer
-from performers.logs_performer import LogsPerformer
 
 
 class ButtonsPerformer():
@@ -18,14 +15,13 @@ class ButtonsPerformer():
         lp (LogsPerformer): The LogsPerformer object for app logging.
     """
     
-    def __init__(self, cursor: Cursor, dp: DataPerformer, lp: LogsPerformer):
+    def __init__(self, dp, lp=None):
         """Initializes ButtonPerformer instance."""
         
-        self.cursor = cursor
         self.dp = dp
         self.lp = lp
     
-    def configure_buttons(self, data: dict) -> list:
+    def configure_buttons(self, data, cursor):
         """Configures a Button placement on the window.
         
         Creates an empty list, which may contain Buttons placement 
@@ -49,17 +45,17 @@ class ButtonsPerformer():
         
         self.lp.log(self.lp.INFO, self.lp.CONFIG_BUTTONS_MESS_ID)
         
-        positions: list = []
+        positions = []
         
         if data.get('groups'):
-            groups_data: dict = data['groups']
+            groups_data = data['groups']
             group_index = 0
                 
             while True:
                 group_index += 1
                     
                 if groups_data.get(f'group{group_index}') and groups_data[f'group{group_index}'].get('buttons'):
-                    buttons_data: dict = groups_data[f'group{group_index}']['buttons']
+                    buttons_data = groups_data[f'group{group_index}']['buttons']
                     button_index = 0
                     positions.append([])
                         
@@ -68,13 +64,13 @@ class ButtonsPerformer():
                             
                         if buttons_data.get(f'button{button_index}'):               
                             positions[group_index-1].append(
-                                self.cursor.place_button(
+                                cursor.place_button(
                                     buttons_data[f'button{button_index}']
                                 )
                             )
                             
                         else:
-                            self.cursor.move_to_new_group()  
+                            cursor.move_to_new_group()  
                             break
                 else:
                     self.lp.log(self.lp.INFO, self.lp.CONFIG_BUTTONS_SUCC_MESS_ID)
@@ -85,7 +81,7 @@ class ButtonsPerformer():
                 
         return None
             
-    def show_buttons(self, data: dict, positions: list, root: tk.Frame):
+    def show_buttons(self, data, positions, root, window):
         """Shows Buttons on the window.
         
         Before displayng, loads the service data for network credentials. 
@@ -110,7 +106,7 @@ class ButtonsPerformer():
         timeout = data['dir_open_timeout']
         
         for i in range(len(positions)):
-            group_data: dict = data['groups'][f'group{i+1}']
+            group_data = data['groups'][f'group{i+1}']
             
             for j in range(len(positions[i])):
                 button_data = group_data['buttons'][f'button{j+1}']
@@ -119,7 +115,7 @@ class ButtonsPerformer():
                     button = tk.Button(
                         master=root,
                         text=button_data['name'],
-                        font=Font(family='Calibri', size=11, weight='bold'),
+                        font=('Calibri', 11, 'bold'),
                         relief=tk.SOLID,
                         borderwidth=1,
                         bg=button_data['bg_color'],
@@ -127,7 +123,7 @@ class ButtonsPerformer():
                     )
                 except _tkinter.TclError as e:
                     message = f"Обнаружен недопустимый параметр для кнопки.\n\n{e}"
-                    Dialog(self.lp).show_error(message)  
+                    Dialog(self.lp).show_error(message, window)  
                 
                 button.bind(
                     '<Button-1>', 
@@ -135,7 +131,7 @@ class ButtonsPerformer():
                         button=button,
                         data=button_data,
                         credentials=credentials: 
-                            self._start_action(e, button, data, credentials, timeout)
+                            self._start_action(e, button, data, credentials, timeout, window)
                 )
                 
                 button.bind(
@@ -144,7 +140,7 @@ class ButtonsPerformer():
                         button=button,
                         data=button_data,
                         credentials=credentials: 
-                            self._start_action(e, button, data, credentials, timeout)
+                            self._start_action(e, button, data, credentials, timeout, window)
                 )
                     
                 button.place(
@@ -156,14 +152,7 @@ class ButtonsPerformer():
                 
         self.lp.log(self.lp.INFO, self.lp.SHOW_BUTTONS_SUCC_MESS_ID)
                 
-    def _start_action(
-        self, 
-        event, 
-        button: tk.Button, 
-        b_data: dict,
-        s_data: dict,
-        timeout: float
-    ):
+    def _start_action(self, event, button, b_data, s_data, timeout, root):
         """Starts some actions after clicking a Button.
         
         Gets name and directory from the clicked Button and renames it 
@@ -184,9 +173,11 @@ class ButtonsPerformer():
         button_dir = b_data['path']
         button.config(text='Подождите')
         
-        threading.Thread(
+        from threading import Thread
+        Thread(
             target=self._open_directory,
-            args=(button_dir, button, button_name, s_data, timeout)
+            args=(button_dir, button, button_name, s_data, timeout, root),
+            name='Directory opening thread',
         ).start()
         
         button.config(
@@ -196,14 +187,7 @@ class ButtonsPerformer():
             fg=b_data['fg_color']
         )
     
-    def _open_directory(
-        self, 
-        dir: str, 
-        btn: tk.Button, 
-        name: str,
-        creds: dict,
-        timeout: float
-    ):
+    def _open_directory(self, path, btn, name, creds, timeout, root):
         """Opens a certain directory.
         
         Defines the user's operation system and if this OS is not 
@@ -221,99 +205,136 @@ class ButtonsPerformer():
             timeout (float): The time gap while the app is trying to open a network directory.
         """
         
-        self.lp.log(self.lp.INFO, self.lp.OPEN_DIR_MESS_ID, (dir,))
+        self.lp.log(self.lp.INFO, self.lp.OPEN_DIR_MESS_ID, (path,))
         
-        if platform.system() == 'Windows':
+        from platform import system
+        if system() == 'Windows':            
             try:
-                network_device_name = self._get_network_device_name(dir)
-                network_device_ip = self._get_network_device_ip(network_device_name)
-                if network_device_name:
-                    map_cmd = f'net use "\\\\{network_device_ip}" /user:"{creds["username"]}" "{creds["password"]}"'
-                    map_cmd_res = self._run_command(
-                        cmd=map_cmd,
+                from performers.network_performer import NetworkPerformer
+                net_perf = NetworkPerformer(self.lp)
+                network_device_name = net_perf.get_network_device_identifier(path)
+                
+                if network_device_name:                    
+                    network_device_ip = net_perf.get_network_device_ip(network_device_name)
+
+                    map_command = net_perf.execute(
+                        'win create map', 
+                        identifier=network_device_ip,
+                        username=creds['username'],
+                        password=creds['password'],
                         timeout=timeout,
-                        hide_cmd_window=True
+                        hide_cmd=True,
                     )
                     
-                    if map_cmd_res.returncode == 0:
-                        self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID, (map_cmd,))
-                        
-                        dir_cmd = dir.replace(network_device_name, network_device_ip)
-                        self._define_dir_type(
-                            cmd=dir_cmd,
-                            timeout=timeout
-                        )
-                        
-                        del_cmd = f'net use "\\\\{network_device_ip}" /delete /yes'
-                        del_cmd_res = self._run_command(
-                            cmd=del_cmd,
+                    if map_command.returncode == 0:     
+                        self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID)
+                                           
+                        directory = path.replace(network_device_name, network_device_ip)
+                            
+                        self._open_windows_directory(directory, net_perf, timeout, root)
+                                
+                        del_command = net_perf.execute(
+                            'win delete map',
+                            identifier=network_device_ip,
                             timeout=timeout,
-                            hide_cmd_window=True
+                            hide_cmd=True,
                         )
-                        
-                        if del_cmd_res.returncode == 0:
-                            self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID, (del_cmd,))
-                        
+                            
+                        if del_command.returncode == 0:
+                            self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID)
+                            
                         else:
-                            self.lp.log(self.lp.ERR, self.lp.RUN_CMD_FAIL_MESS_ID, (del_cmd,))
+                            self.lp.log(self.lp.INFO, self.lp.RUN_CMD_FAIL_MESS_ID)
                             
-                            self._show_error(command_result=del_cmd_res)
-                            
+                            self._show_error(root, command_result=del_command)
+                                
                     else:
-                        self.lp.log(self.lp.ERR, self.lp.RUN_CMD_FAIL_MESS_ID, (map_cmd,))
+                        self.lp.log(self.lp.INFO, self.lp.RUN_CMD_FAIL_MESS_ID)
                         
-                        self._show_error(command_result=map_cmd_res)  
+                        self._show_error(root, command_result=map_command) 
                         
                 else:
-                    self._define_dir_type(
-                        cmd=dir,
-                        timeout=timeout
-                    )
+                    self._open_windows_directory(path, net_perf, timeout, root)
                     
             except subprocess.CalledProcessError as e:
-                self._show_error(command_result=e)
-            except subprocess.TimeoutExpired as e:
+                self._show_error(root, command_result=e)
+            except (subprocess.TimeoutExpired, gevent.Timeout) as e:
                 message = f'Превышено время ожидания ответа в {timeout} секунд.'
-                Dialog(self.lp).show_error(message)
+                self._show_error(root, message)
+                # Dialog(self.lp).show_error(message, root)
             except FileNotFoundError as e:
                 message = 'Не удается найти указанный файл или папку.'
-                self._show_error(error=e, message=message)
+                self._show_error(root, error=e, message=message)
             except PermissionError:
                 message = 'Отсутсвует разрешение на открытие указанного файла или папки.'
-                self._show_error(error=e, message=message)
+                self._show_error(root, error=e, message=message)
             except OSError as e:
-                self._show_error(error=e)
+                self._show_error(root, error=e)
+            except Exception as e:
+                message = 'Не удалось получить IP-адрес объекта.'
+                self._show_error(message, root)
+                
+            finally:
+                btn.config(text=name)
         
         else:
             try:
                 subprocess.run(
-                    f'echo "{creds["password"]}" | sudo -S open "{dir}"'
+                    f'echo "{creds["password"]}" | sudo -S open "{path}"'
                 )
                 
             except subprocess.CalledProcessError as e:
                 message = f"Ошибка выполнения консольной команды.\n\n{e}"
-                Dialog(self.lp).show_error(message)
+                Dialog(self.lp).show_error(message, root)
             except FileNotFoundError as e:
                 message = f"Не удалось открыть файл или папку. Возможно имеются проблемы с сетью либо данной директории не существует.\n\n{e}"
-                Dialog(self.lp).show_error(message)
+                Dialog(self.lp).show_error(message, root)
             except OSError as e:
                 message = f"Ошибка в системе.\n\n{e}"
-                Dialog(self.lp).show_error(message)
+                Dialog(self.lp).show_error(message, root)
             except ValueError as e:
                 message = f"Неверное значение.\n\n{e}"
-                Dialog(self.lp).show_error(message)
+                Dialog(self.lp).show_error(message, root)
             except subprocess.TimeoutExpired as e:
                 message = f"Превышено время ожидания открытия файла или папки.\n\n{e}"
-                Dialog(self.lp).show_error(message)
+                Dialog(self.lp).show_error(message, root)
                 
-        btn.config(text=name)
-        
-    def _show_error(
-        self, 
-        message: str=None,
-        command_result=None,
-        error=None
-    ):
+            finally:
+                btn.config(text=name)
+
+    def _open_windows_directory(self, directory, net_perf, timeout, root):
+        if self._is_file(directory):
+            dir_command = net_perf.execute(
+                'win open file',
+                file=directory,
+                timeout=timeout,
+            )
+            
+            if dir_command.returncode == 0:
+                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID)
+            
+            if dir_command.returncode == -1:
+                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_FAIL_MESS_ID)
+                
+                message = 'Не найден путь к файлу.'
+                self._show_error(root, message=message)
+            
+        else:
+            dir_command = net_perf.execute(
+                'win open folder',
+                path=directory,
+                timeout=timeout,
+            )
+            
+            if dir_command.returncode == 0 or dir_command.returncode == 1:
+                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID)
+                
+            else:
+                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_FAIL_MESS_ID)
+                
+                self._show_error(root, command_result=dir_command)
+                            
+    def _show_error(self, root, message=None, command_result=None, error=None):
         """Shows error if any occured.
         
         Composes a message with the error description and shows it 
@@ -346,9 +367,9 @@ class ButtonsPerformer():
             else:
                 msg = 'Возникла ошибка при выполнении операции.'
                 
-        Dialog(self.lp).show_error(msg)
+        Dialog(self.lp).show_error(msg, root)
         
-    def _is_file(self, path: str) -> bool:
+    def _is_file(self, path):
         """Defines if the direcory is file with RegEx.
         
         Returns:
@@ -356,122 +377,6 @@ class ButtonsPerformer():
             bool (False): If the direcory is a folder.
         """
         
-        file_types = ['.exe', '.txt', '.json', '.csv', '.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.xlsm', '.bat', '.mp3', '.mp4', '.avi', '.wav', '.wmv', '.mkv']
+        file_types = ['.exe', '.txt', '.rtf', '.md', '.html', '.htm', '.xml', '.json', '.csv', '.doc', '.docx', '.xls', '.xlsx', '.xlsm', '.ini', '.yaml', '.yml', '.log', '.sh', '.py', '.js', '.jpg', '.jpeg', '.png', '.bat', '.mp3', '.mp4', '.avi', '.wav', '.wmv', '.mkv']
         pattern = fr'\b(?:{"|".join(re.escape(file_type) for file_type in file_types)})\b'
         return bool(re.search(pattern, path))
-    
-    def _get_network_device_name(self, dir: str) -> Optional[Union[str, None]]:
-        """Gets name of the network device (using RegEx) 
-        which the user connects to.
-
-        Args:
-            dir (str): Network directory which might have the network device name.
-
-        Returns:
-            str: If it is able to extract the network device name.
-            None: If not.
-        """
-
-        matches = re.match(r'\\\\([^\\]+)', dir)
-        return matches.group(1) if matches else None
-    
-    def _get_network_device_ip(self, identifier: str=None) -> Optional[Union[str, None]]:
-        """Gets IP-address of the network device
-        which the user connects to.
-
-        Args:
-            identifier (str): The network device identifier. Defaults to None
-
-        Returns:
-            str: Network device IP-address.
-            None: If not.
-        """
-        
-        return socket.gethostbyname(identifier) if identifier else None
-    
-    def _define_dir_type(self, cmd: str, timeout: float):
-        """Defines directory type to open it next.
-        
-        Uses different commands for opening a directory 
-        which contains either a file or a folder.
-
-        Args:
-            cmd (str): The network directory.
-            timeout (float): Quanity of seconds of the possibility to open the directory.
-        """
-        
-        if self._is_file(cmd):
-            file_cmd_res = self._run_command(cmd)
-                          
-            if file_cmd_res.returncode == 0 or file_cmd_res.returncode == 1:
-                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID, (cmd,))
-            
-            else:
-                self.lp.log(self.lp.ERR, self.lp.RUN_CMD_FAIL_MESS_ID, (cmd,))
-                
-                self._show_error(command_result=file_cmd_res)
-                                
-        else:
-            dir_cmd_res = self._run_command(
-                cmd=f'explorer "{cmd}"',
-                timeout=timeout
-            )
-            
-            if dir_cmd_res.returncode == 0 or dir_cmd_res.returncode == 1:
-                self.lp.log(self.lp.INFO, self.lp.RUN_CMD_SUCC_MESS_ID, (cmd,))
-                
-            else:
-                self.lp.log(self.lp.ERR, self.lp.RUN_CMD_FAIL_MESS_ID, (cmd,))
-                
-                self._show_error(command_result=dir_cmd_res)
-    
-    def _run_command(self, cmd: str, timeout: float=0.0, hide_cmd_window: bool=False):
-        """Runs a command to open directory.
-
-        Args:
-            cmd (str): The command which the application opens directory with.
-            timeout (float): Quanity of seconds of the possibility to open the directory. If timeout is 0 s, tries to open directory without any timeout. Defaults to 0.0
-            hide_cmd_window (bool, optional): Defines if the CMD window must be hidden while running the command. Defaults to False.
-
-        Returns:
-            subprocess.CompletedProcess[bytes]: The metadata of completed command.
-        """
-        
-        self.lp.log(self.lp.INFO, self.lp.RUN_CMD_MESS_ID, (cmd,))
-        
-        if hide_cmd_window:
-            startup_info = subprocess.STARTUPINFO()
-            startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startup_info.wShowWindow = subprocess.SW_HIDE
-            
-            if timeout == 0.0:
-                return subprocess.Popen(
-                    args=cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    startupinfo=startup_info
-                )
-            else:
-                return subprocess.run(
-                    args=cmd, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.PIPE,
-                    startupinfo=startup_info,
-                    timeout=timeout
-                )
-            
-        else:
-            if timeout == 0.0:
-                return subprocess.run(
-                    args=cmd, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.PIPE
-                )
-                
-            else:
-                return subprocess.run(
-                    args=cmd, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.PIPE,
-                    timeout=timeout
-                )

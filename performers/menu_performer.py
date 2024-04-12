@@ -1,9 +1,6 @@
 import tkinter as tk
-import os
 
-from performers.data_performer import DataPerformer
-from performers.logs_performer import LogsPerformer
-from performers.window_performer import WindowPerformer
+from performers.expanded_tkinter import ExpandedTopLevel
 from dialog import Dialog
 
 class MenuPerformer():
@@ -17,16 +14,17 @@ class MenuPerformer():
     """
     
     
-    def __init__(self, dp: DataPerformer, wp: WindowPerformer, lp: LogsPerformer):
+    def __init__(self, canvas, dp, lp=None):
         """Initializes MenuPerformer instance."""
         
         self.menu = None
+        
+        self.canvas = canvas
         self.dp = dp
-        self.wp = wp
         self.lp = lp
         
     
-    def show_menu(self, root: tk.Tk):
+    def show_menu(self, root):
         """Shows the toolbar menu.
 
         Args:
@@ -40,16 +38,16 @@ class MenuPerformer():
         
         self.menu.add_cascade(
             label='Опции', 
-            menu=self._show_options_menu(root)
+            menu=self._show_options_menu(root),
         )
         self.menu.add_cascade(
             label='Помощь', 
-            menu=self._show_help_menu(root)
+            menu=self._show_help_menu(root),
         )
         
         self.lp.log(self.lp.INFO, self.lp.SHOW_MENU_SUCC_MESS_ID)
         
-    def _show_options_menu(self, root: tk.Tk) -> tk.Menu:
+    def _show_options_menu(self, root):
         """Shows inner menu of the main toolbar menu.
 
         Args:
@@ -62,19 +60,16 @@ class MenuPerformer():
         options_menu = tk.Menu(master=root, tearoff=0)
         options_menu.add_cascade(
             label='Файл конфигурации',
-            menu=self._show_config_file_menu(options_menu)
+            menu=self._show_config_file_menu(options_menu),
         )
         options_menu.add_cascade(
             label='Сетевые учетные данные',
-            menu=self._show_cred_settings_menu(options_menu)
+            menu=self._show_cred_settings_menu(options_menu),
         )
         
         return options_menu
     
-    def _show_config_file_menu(
-        self, 
-        master_menu: tk.Menu
-    ) -> tk.Menu:
+    def _show_config_file_menu(self, master_menu):
         """Shows specififc options of certain inner menu element.
         
         Perfoms operations for opening built-in dialog window 
@@ -90,15 +85,12 @@ class MenuPerformer():
         config_file_menu = tk.Menu(master=master_menu, tearoff=0)
         config_file_menu.add_command(
             label='Импортировать', 
-            command=self._import_file
+            command=lambda: self._import_file(master_menu),
         )
         
         return config_file_menu
     
-    def _show_cred_settings_menu(
-        self, 
-        master_menu: tk.Menu
-    ) -> tk.Menu:
+    def _show_cred_settings_menu(self, master_menu):
         """Shows specififc options of certain inner menu element.
         
         Perfoms operations for opening custom dialog window 
@@ -114,12 +106,12 @@ class MenuPerformer():
         config_file_menu = tk.Menu(master=master_menu, tearoff=0)
         config_file_menu.add_command(
             label='Изменить', 
-            command=lambda: self._set_network_credentials(master_menu)
+            command=lambda: self._set_network_credentials(master_menu),
         )
         
         return config_file_menu
     
-    def _set_network_credentials(self, root: tk.Menu):
+    def _set_network_credentials(self, root):
         """Sets the network credentials.
         
         Creates Toplevel dialog window with some elements 
@@ -133,38 +125,40 @@ class MenuPerformer():
         
         self.lp.log(self.lp.INFO, self.lp.OPEN_CREDS_MODAL_MESS_ID)
         
-        modal_window = tk.Toplevel(root)
-        
-        self.wp.center_window(modal_window, 400, 120)
-        self.wp.configure_window(modal_window)
-        modal_window.title('Изменить сетевые учетные данные')
+        modal_window = ExpandedTopLevel(root)
+        modal_window.configure(
+            width=400, 
+            height=120, 
+            title='Изменить сетевые учетные данные',
+            toolwindow=True,
+        )
         modal_window.grab_set()
         
         s_data = self.dp.service_data
         
         label_username = tk.Label(
             master=modal_window,
-            text='Имя пользователя'
+            text='Имя пользователя',
         )
         label_username.pack(anchor=tk.W, padx=5, pady=(5, 0))
         
         entry_username = tk.Entry(
             master=modal_window,
-            width=modal_window.winfo_screenwidth()
+            width=modal_window.winfo_screenwidth(),
         )
         entry_username.insert(0, s_data[self.dp.username_cred_key])
         entry_username.pack(anchor=tk.CENTER, padx=5)
         
         label_password = tk.Label(
             master=modal_window,
-            text='Пароль'
+            text='Пароль',
         )
         label_password.pack(anchor=tk.W, padx=5)
         
         entry_password = tk.Entry(
             master=modal_window,
             width=modal_window.winfo_screenwidth(),
-            show='*'
+            show='*',
         )
         entry_password.insert(0, s_data[self.dp.password_cred_key])
         entry_password.pack(anchor=tk.CENTER, padx=5, pady=(0, 5))
@@ -192,13 +186,7 @@ class MenuPerformer():
         
         modal_window.wait_window()
         
-    def _save_network_credentials(
-        self, 
-        event, 
-        window: tk.Toplevel, 
-        user: str, 
-        passw: str
-    ):
+    def _save_network_credentials(self, event, window, user, passw):
         """Saves the network credentials.
         
         Creates a dictionary and saves them as a part 
@@ -210,35 +198,36 @@ class MenuPerformer():
             passw (str): The password of credentials.
         """
         
-        s_data = self.dp.service_data
-        s_data[self.dp.creds_import_mode_key] = 'False'
-        s_data[self.dp.username_cred_key] = user
-        s_data[self.dp.password_cred_key] = passw
-        
-        self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.creds_import_mode_key, s_data[self.dp.username_cred_key],))
-        self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.username_cred_key, s_data[self.dp.username_cred_key],))
-        self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.password_cred_key, s_data[self.dp.password_cred_key],))
-        
-        self.dp.save_service_data(s_data)
+        # self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.creds_import_mode_key, s_data[self.dp.username_cred_key],))
+        # self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.username_cred_key, s_data[self.dp.username_cred_key],))
+        # self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.password_cred_key, s_data[self.dp.password_cred_key],))
+                
+        self.dp.save_credentials_import_mode('False')
+        self.dp.save_credentials(user, passw)
         
         window.destroy()
         
         self.lp.log(self.lp.INFO, self.lp.CLOSE_CREDS_MODAL_MESS_ID)
             
-    def _import_file(self):
+    def _import_file(self, root):
         """Opens the built-in filedialog to find the file 
         with data. If user found it, the application saves it."""
         
         self.lp.log(self.lp.INFO, self.lp.OPEN_DIALOG_LOAD_A_DATA_MESS_ID)
         
         title = 'Открыть файл конфигурации'
-        filedir = Dialog(self.lp).open_file_dialog(title)
-        self._save_file_directory(filedir)
+        filedir = Dialog(self.lp).open_file_dialog(title, root)
+        
+        if filedir:
+            self.lp.log(self.lp.INFO, self.lp.GOT_A_DATA_FILEDIR_MESS_ID, (dir,))
+            
+            from threading import Thread
+            Thread(target=self._save_new_app_data, args=(root, filedir,)).start()
         
         self.lp.log(self.lp.INFO, self.lp.CLOSE_DIALOG_LOAD_A_DATA_MESS_ID)
             
-    def _save_file_directory(self, dir: str):
-        """Saves filedirecory of the application data 
+    def _check_new_app_data(self, filedir, root):
+        """Saves filedirectory of the application data 
         as a part of the service data.
         
         If the service data exists, performs this action.
@@ -247,23 +236,32 @@ class MenuPerformer():
             dir (str): The directory of the file with the application data.
         """
         
-        if dir:
-            
+        if filedir:
             self.lp.log(self.lp.INFO, self.lp.GOT_A_DATA_FILEDIR_MESS_ID, (dir,))
+
+            #     self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.a_serv_data_key, s_data[self.dp.a_serv_data_key],))
+            #     self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.a_serv_data_mtime_key, s_data[self.dp.a_serv_data_mtime_key],))
+            #     self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.creds_import_mode_key, s_data[self.dp.creds_import_mode_key],))
             
-            s_data = self.dp.service_data
-            if s_data:
-                s_data[self.dp.a_data_key] = dir
-                s_data[self.dp.a_data_mtime_key] = os.path.getmtime(dir)
-                s_data[self.dp.creds_import_mode_key] = 'True'
-                
-                self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.a_data_key, s_data[self.dp.a_data_key],))
-                self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.a_data_mtime_key, s_data[self.dp.a_data_mtime_key],))
-                self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.dp.creds_import_mode_key, s_data[self.dp.creds_import_mode_key],))
+            from threading import Thread
+            Thread(target=self._save_new_app_data, args=(root, filedir,)).start()
                     
-                self.dp.save_service_data(s_data)
+    def _save_new_app_data(self, root, filedir):
+        from performers.network_performer import NetworkPerformer
+        self.dp.server_device_name = NetworkPerformer(self.lp).get_network_device_identifier(filedir)
+        serv_app_data = self.dp.load_application_data_from_server(filedir)
+            
+        if serv_app_data:
+            from validator import Validator
+            validatable = Validator(self.lp).check_app_data(root, serv_app_data)
                 
-    def _show_help_menu(self, root: tk.Tk) -> tk.Menu:
+            if validatable:
+                self.dp.save_server_application_data_directory(filedir)
+                self.dp.save_modification_time()
+                self.dp.save_credentials_import_mode('True')
+                self.dp.save_application_data(serv_app_data, True)
+                
+    def _show_help_menu(self, root):
         """Shows inner menu of the main toolbar menu.
 
         Args:
@@ -279,7 +277,7 @@ class MenuPerformer():
             command=lambda: self._show_help(
                 root=help_menu,
                 title='Справка',
-                filepath='help.txt'
+                filepath=self.dp.help_file_dir
             )
         )
         help_menu.add_command(
@@ -287,13 +285,17 @@ class MenuPerformer():
             command=lambda: self._show_help(
                 root=help_menu,
                 title='Описание обновлений',
-                filepath='updates.txt'
+                filepath=self.dp.updates_file_dir
             )
+        )
+        help_menu.add_command(
+            label='Открыть логи',
+            command=lambda: self._show_log(root),
         )
         
         return help_menu
     
-    def _show_help(self, root: tk.Menu, title: str, filepath: str):
+    def _show_help(self, root, title, filepath):
         """Shows the help window.
         
         Creates Toplevel dialog window with some elements 
@@ -313,26 +315,22 @@ class MenuPerformer():
         
         self.lp.log(self.lp.INFO, self.lp.OPEN_HELP_DIALOG_MESS_ID, (title,))
         
-        modal_window = tk.Toplevel(
-            master=root,
-            width=400,
-            height=530    
+        modal_window = ExpandedTopLevel(root)
+        modal_window.configure(
+            width=400, 
+            height=530, 
+            title=title, 
+            toolwindow=True
         )
-        
-        self.wp.center_window(modal_window, 400, 530)
-        self.wp.configure_window(modal_window)
-        self.wp.unbind_scrolling()
-        
-        modal_window.title(title)
+        self.canvas.unbind_scrolling()
+
         modal_window.grab_set()
         modal_window.protocol(
-            name='WM_DELETE_WINDOW',
-            func=lambda: self._on_close_help(modal_window)
+            'WM_DELETE_WINDOW', 
+            lambda: modal_window.on_close(self.canvas, self.lp)
         )
         
-        text_file_relpath = f'content\\{filepath}'
-        with open(self.wp.get_content_path(text_file_relpath), encoding='utf-8') as f:
-            text = f.read()
+        content = self.dp.load_content_file(filepath)
             
         upper_frame = tk.Frame(master=modal_window)
         upper_frame.pack(
@@ -350,7 +348,7 @@ class MenuPerformer():
             font=('Times New Roman', 11),
             bg=modal_window.cget('bg')
         )
-        text_field.insert(tk.END, text)
+        text_field.insert(tk.END, content)
         text_field.pack(side=tk.LEFT)
         
         scrollbar = tk.Scrollbar(
@@ -372,27 +370,17 @@ class MenuPerformer():
             master=modal_window,
             width=10,
             text='Закрыть',
-            command=lambda: self._on_close_help(
-                window=modal_window
-            )
+            command=lambda: modal_window.on_close(self.canvas, self.lp)
         )
         close_button.pack(side=tk.RIGHT, padx=5)
         
         modal_window.wait_window()
         
-    def _on_close_help(self, window: tk.Toplevel):
-        """Handles events of closing the help window.
+    def _show_log(self, root):
+        from performers.network_performer import NetworkPerformer
+        filepath = f'{self.dp.get_base_path()}\\{self.dp.log_file_dir}'
+        command = NetworkPerformer(self.lp).execute('win open file', file=filepath)
         
-        Destroyes the help window and enables scrolling 
-        for the main window.
-        
-        Args:
-            window (tk.Toplevel): The help Toplevel window.
-        """
-        
-        window.destroy()
-        self.wp.bind_scrolling()
-        window.destroy()
-        self.wp.bind_scrolling()
-        
-        self.lp.log(self.lp.INFO, self.lp.CLOSE_HELP_DIALOG_MESS_ID)
+        if command.returncode == -1:
+            message = 'Файл не найден.'
+            Dialog().show_error(message, root)

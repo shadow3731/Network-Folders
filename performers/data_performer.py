@@ -1,7 +1,8 @@
-import json, pickle, re, os, subprocess, socket, threading, time
+import json, pickle, os, threading
+from time import mktime
 
 from dialog import Dialog
-from performers.logs_performer import LogsPerformer
+
 
 class DataPerformer():
     """The class for manipulating with service and application data.
@@ -22,37 +23,45 @@ class DataPerformer():
         data_file_dir (str): the local application data directory.
     """
     
-    def __init__(self, lp: LogsPerformer):
+    def __init__(self, root, lp=None):
         """Initializes DataPerformer instance."""
         
-        self.service_data: dict = None
-        self.server_device_name: str = None
+        self.service_data = None
+        self.server_device_name = None
         
         self.lp = lp
         
-        self.current_app_version = '1.6'
-        self.suppotred_versions = [
-            '1.5', '1.6'
-        ]
+        self.current_app_version = '1.7'
+        self.suppotred_versions = (
+            '1.7',
+        )
         
         self.support_versions_key = 'supports'
-        self.a_data_key = 'app_data_file_path'
-        self.a_data_mtime_key = 'app_data_mtime'
+        self.a_serv_data_key = 'app_server_data_file_path'
+        self.a_serv_data_mtime_key = 'app_server_data_mtime'
+        self.a_local_data_mtimte_key = 'app_local_data_mtime'
         self.creds_import_mode_key = 'credentials_import_mode'
         self.username_cred_key = 'username_credentials'
         self.password_cred_key = 'password_credentials'
         
         self.valid_service_data_pattern = {
             self.support_versions_key: ', '.join(self.suppotred_versions),
-            self.a_data_key: '',
-            self.a_data_mtime_key: time.mktime((2000, 1, 1, 0, 0, 0, 0, 0, 0)),
+            self.a_serv_data_key: '',
+            self.a_serv_data_mtime_key: mktime((2000, 1, 1, 0, 0, 0, 0, 0, 0)),
+            self.a_local_data_mtimte_key: mktime((2000, 1, 1, 0, 0, 0, 0, 0, 0)),
             self.creds_import_mode_key: 'False',
             self.username_cred_key: '',
-            self.password_cred_key: ''
+            self.password_cred_key: '',
         }
         
         self.service_file_dir = 'config\\local_data.picke'
         self.data_file_dir = 'config\\local_app_data.json'
+        self.log_file_dir = 'config\\log.log'
+        self.help_file_dir = 'content\\help.txt'
+        self.updates_file_dir = 'content\\updates.txt'
+        self.icon_file_dir = 'icon.ico'
+        
+        self.root = root
                 
     def load_service_data(self):  
         """Loads the service data.
@@ -71,17 +80,16 @@ class DataPerformer():
         self._create_if_not_exists('service_data', self.service_file_dir)
             
         with open(self.service_file_dir, 'rb') as f:
-            data: dict = pickle.load(f)
+            data = pickle.load(f)
             
         self.service_data = self._get_valid_service_data(data)
-                
-        self.server_device_name = self._get_computer_ip_or_name(
-            filepath=data[self.a_data_key]
-        )
+        
+        from performers.network_performer import NetworkPerformer
+        self.server_device_name = NetworkPerformer(self.lp).get_network_device_identifier(data[self.a_serv_data_key])
         
         self.lp.log(self.lp.INFO, self.lp.LOAD_S_DATA_SUCC_MESS_ID, (self.service_file_dir,))
         
-    def save_service_data(self, savable_data: dict):
+    def save_service_data(self, savable_data):
         """Saves the service data.
         
         Tries to save new or updated service data.
@@ -91,7 +99,7 @@ class DataPerformer():
             savable_data (dict): the new or updated service data.
         """
         
-        self.lp.log(self.lp.INFO, self.lp.SAVE_S_DATA_MESS_ID, (self.service_file_dir,))
+        # self.lp.log(self.lp.INFO, self.lp.SAVE_S_DATA_MESS_ID, (self.service_file_dir,))
         
         try:
             with open(self.service_file_dir, 'wb') as f:
@@ -108,9 +116,9 @@ class DataPerformer():
                 'Запустите программу с правами администратора или '
                 'обратитесь за помощью к системному администратору.'
             )
-            Dialog(self.lp).show_error(message)
+            Dialog(self.lp).show_error(message, self.root)
                 
-    def load_application_data_from_server(self, filepath: str) -> dict:
+    def load_application_data_from_server(self, filepath, locally_aswell=False):
         """Loads the application data from a server.
         
         If the server is defined and is currently online,
@@ -151,14 +159,16 @@ class DataPerformer():
                     dialog = Dialog(self.lp)
                     threading.Thread(
                         target=dialog.show_error,
-                        args=(message,)
+                        args=(message, self.root,)
                     ).start()
-                    
-        self.lp.log(self.lp.INFO, self.lp.LOAD_A_DATA_TRY_LOCAL_MESS_ID)
         
-        return self.load_application_data_locally()
+        if locally_aswell is True:  
+            self.lp.log(self.lp.INFO, self.lp.LOAD_A_DATA_TRY_LOCAL_MESS_ID)
+            return self.load_application_data_locally()
         
-    def load_application_data_locally(self) -> dict:
+        return None
+        
+    def load_application_data_locally(self):
         """Loads the application data from the user's local computer.
         
         If the path to the file with application data exists, reads and returns it.
@@ -192,12 +202,12 @@ class DataPerformer():
                 dialog = Dialog(self.lp)
                 threading.Thread(
                     target=dialog.show_error,
-                    args=(message,)
+                    args=(message, self.root)
                 ).start()
         
         return None
     
-    def save_appearance_data(self, savable_data: dict):
+    def save_application_data(self, savable_data, show_info=False):
         """Saves the application data.
         
         Before saving, rewrites last modification time of the application data.
@@ -210,25 +220,47 @@ class DataPerformer():
             savable_data (dict): the new or updated application data.
         """
         
+        self.lp.log(self.lp.INFO, self.lp.SAVE_A_DATA_MESS_ID, (self.data_file_dir,))
+        
         try:
             with open(self.data_file_dir, 'w', encoding='utf-8-sig') as f:
                 json.dump(savable_data, f, indent=4)
                 
-            self.service_data[self.a_data_mtime_key] = os.path.getmtime(self.service_data[self.a_data_key])
-            
-            self.lp.log(self.lp.INFO, self.lp.EDIT_S_DATA_MESS_ID, (self.a_data_mtime_key, self.service_data[self.a_data_mtime_key],))
-            
-            self.save_service_data(self.service_data)
+                self.lp.log(self.lp.INFO, self.lp.SAVE_A_DATA_SUCC_MESS_ID, (self.data_file_dir,))
+                
+                if show_info is True:
+                    message = 'Файл конфигурации импортирован успешно. Перезапустите программу.'
+                    Dialog(self.lp).show_info(message, self.root)
+                
+                self.save_modification_time()
         
-        except PermissionError:
+        except PermissionError as e:
+            self.lp.log(self.lp.INFO, self.lp.SAVE_A_DATA_FAIL_MESS_ID, (self.data_file_dir, e,))
+            
             message = (
                 'Не удалось сохранить файл конфигурации из-за отсутствия необходимых прав. '
                 'Запустите программу с правами администратора или '
                 'обратитесь за помощью к системному администратору.'
             )
-            Dialog(self.lp).show_error(message)
+            Dialog(self.lp).show_error(message, self.root)
+            
+    def update_application_file(self):
+        modified = self.check_application_data_modified(True)
+        
+        if modified:
+            self.lp.log(self.lp.INFO, self.lp.UPDATE_A_DATA_MESS_ID)
+            
+            filepath = self.service_data[self.a_serv_data_key]
+            serv_app_data = self.load_application_data_from_server(filepath)
+            self.save_application_data(serv_app_data)
+            
+    def load_content_file(self, filepath):
+        full_path = self.get_full_path(filepath)
+        
+        with open(full_path, encoding='utf-8') as f:
+            return f.read()
     
-    def _create_if_not_exists(self, target: str, filepath: str=None):
+    def _create_if_not_exists(self, target, filepath=None):
         """Creates file if it does not exist.
         
         The file with service data is required to be not readable 
@@ -251,7 +283,7 @@ class DataPerformer():
             else:
                 self.lp.log(self.lp.INFO, self.lp.S_DATA_EXISTS_MESS_ID)
                     
-    def _get_valid_service_data(self, data: dict) -> dict:
+    def _get_valid_service_data(self, data):
         """Returns valid service data.
         
         If incoming service data is valid, just returns it.
@@ -266,49 +298,18 @@ class DataPerformer():
         
         self.lp.log(self.lp.INFO, self.lp.CHECK_S_DATA_VALID_MESS_ID)
         
-        if data.get(self.support_versions_key) and self.current_app_version in data.get(self.support_versions_key):
+        if self.current_app_version in data.get(self.support_versions_key, None):
             self.lp.log(self.lp.INFO, self.lp.S_DATA_VALID_MESS_ID)
-            
-            return data
         
         else:
             self.lp.log(self.lp.WARN, self.lp.S_DATA_INVALID_AND_CREATE_MESS_ID)
             
             data = self.valid_service_data_pattern
             self.save_service_data(data)
-            return data
-        
-    def _get_computer_ip_or_name(self, filepath: str) -> str:
-        """Gets the server computer IP or name.
-        
-        Defines the server computer IP or name by the path
-        where the file with the application data is.
-        Separates the server name from the filepath by RegEx.
-        
-        Args:
-            filepath (str): the path to the file with the application data.
             
-        Returns:
-            str: The server computer IP or name if defined.
-            None: If not.
-        """
+        return data
         
-        self.lp.log(self.lp.INFO, self.lp.CHECK_SERV_NAME_MESS_ID)
-        
-        match = re.match(r'//([^/]+)', filepath)
-        
-        if match:
-            identifier = match.group(1)
-            
-            self.lp.log(self.lp.INFO, self.lp.GOT_SERV_NAME_MESS_ID, (identifier,))
-            
-            return identifier
-        
-        self.lp.log(self.lp.WARN, self.lp.NO_SERV_NAME_MESS_ID)
-        
-        return None
-        
-    def _is_server_online(self, host: str) -> bool:
+    def _is_server_online(self, host):
         """Defines if the server computer is online.
         
         Run command to define if the server computer is online.
@@ -322,44 +323,89 @@ class DataPerformer():
             bool (False): If not.
         """
         
-        result = subprocess.run(
+        from subprocess import run, PIPE
+        result = run(
             ['ping', '-c', '1', '-W', '1', host], 
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=PIPE,
+            stderr=PIPE
         )
         
         if result.returncode == 0:
             return True
         
         else:
+            from socket import gethostbyname, gaierror
             try:
-                ip = socket.gethostbyname(host)
+                ip = gethostbyname(host)
                 return True
             
-            except socket.gaierror:
+            except gaierror:
                 return False
             
-    def check_file_modified(self, filepath: str) -> bool:
-        """Checks if the server application data was modified.
+    def check_application_data_modified(self, in_server=True):
+        """Checks if the application data was modified.
 
         Args:
-            filepath (str): the path to the server application data.
+            in server (bool): to check in a server. Defaults to True
 
         Returns:
-            bool: True - if filepath is not empty and the server application data was modified. False - otherwise.
+            bool: True - if filepath is not empty and the application data was modified. False - otherwise.
         """
         
-        if filepath != '':
-            try:
-                server_a_data_mtime = os.path.getmtime(filepath)
-                local_a_data_mtime = float(self.service_data[self.a_data_mtime_key])
+        self.lp.log(self.lp.INFO, self.lp.CHECK_A_DATA_UPDATED_MESS_ID)
+        
+        a_data_path = self.service_data[self.a_serv_data_key] if in_server else self.data_file_dir
+        a_data_mtime = self.service_data[self.a_serv_data_mtime_key] if in_server else self.service_data[self.a_local_data_mtimte_key]
+        
+        try:
+            actual_mtime = os.path.getmtime(a_data_path)
+            fixed_mtime = float(a_data_mtime)
+            if actual_mtime > fixed_mtime:
+                self.lp.log(self.lp.INFO, self.lp.A_DATA_UPDATABLE_MESS_ID)
                 
-                if not os.path.exists(self.data_file_dir) or server_a_data_mtime > local_a_data_mtime:
-                    return True
-                else:
-                    return False
-                
-            except (OSError, ValueError):
-                pass
+                return True
             
+        except (OSError, ValueError) as e:
+            self.lp.log(self.lp.INFO, self.lp.CHECK_A_DATA_UPDATED_FAIL_MESS_ID, (e,))
+        
+        self.lp.log(self.lp.INFO, self.lp.A_DATA_NOT_UPDATABLE_MESS_ID)
+        
         return False
+    
+    def save_server_application_data_directory(self, filepath):
+        self.service_data[self.a_serv_data_key] = filepath
+        
+        self.save_service_data(self.service_data)
+    
+    def save_credentials_import_mode(self, mode):
+        self.service_data[self.creds_import_mode_key] = mode
+        
+        self.save_service_data(self.service_data)
+    
+    def save_credentials(self, username, password):
+        self.service_data[self.username_cred_key] = username
+        self.service_data[self.password_cred_key] = password
+                
+        self.save_service_data(self.service_data)
+                
+    def save_modification_time(self):
+        try:
+            new_mtime = os.path.getmtime(self.service_data[self.a_serv_data_key])
+            self.service_data[self.a_serv_data_mtime_key] = new_mtime
+            self.service_data[self.a_local_data_mtimte_key] = new_mtime
+                        
+            self.save_service_data(self.service_data)
+            
+        except FileNotFoundError:
+            pass
+        
+    def get_base_path(self):        
+        try:
+            import sys
+            return f'{sys._MEIPASS}\\network_folders_py\\'
+        except Exception:
+            return os.path.abspath('.')
+        
+    def get_full_path(self, filepath):
+        base_path = self.get_base_path()
+        return os.path.join(base_path, filepath)
