@@ -1,7 +1,7 @@
 import os, portalocker
 
-from .window_factory import WindowFactory
-from performers.logs_performer import LogsPerformer
+from app.window.window_factory import WindowFactory
+from app.performer.logs_performer import LogsPerformer
 
 
 class Application():
@@ -22,7 +22,7 @@ class Application():
         except portalocker.LockException:
             main_window = self.win_factory.create_main()
             
-            from dialog import Dialog
+            from app.window.dialog import Dialog
             Dialog(self.logs_perf).show_error('Программа уже запущена!', main_window)
             
             main_window.destroy()
@@ -51,11 +51,11 @@ class Application():
         loading_window = self.win_factory.create_and_preapare_loader()
         main_window = self.win_factory.create_main()
         
-        from performers.data_performer import DataPerformer
+        from app.performer.data_performer import DataPerformer
         data_perf = DataPerformer(main_window, self.logs_perf)
         data_perf.load_service_data()
         
-        from validator import Validator
+        from app.util.validator import Validator
         raw_app_data = data_perf.load_application_data_locally()
         valid_app_data = Validator(self.logs_perf).validate_app_data(raw_app_data, main_window)
         

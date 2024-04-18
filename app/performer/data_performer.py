@@ -1,7 +1,7 @@
 import json, pickle, os, threading
 from time import mktime
 
-from dialog import Dialog
+from app.window.dialog import Dialog
 
 
 class DataPerformer():
@@ -31,9 +31,9 @@ class DataPerformer():
         
         self.lp = lp
         
-        self.current_app_version = '1.7'
+        self.current_app_version = '1.7.1'
         self.suppotred_versions = (
-            '1.7',
+            '1.7', '1.7.1',
         )
         
         self.support_versions_key = 'supports'
@@ -84,7 +84,7 @@ class DataPerformer():
             
         self.service_data = self._get_valid_service_data(data)
         
-        from performers.network_performer import NetworkPerformer
+        from app.performer.network_performer import NetworkPerformer
         self.server_device_name = NetworkPerformer(self.lp).get_network_device_identifier(data[self.a_serv_data_key])
         
         self.lp.log(self.lp.INFO, self.lp.LOAD_S_DATA_SUCC_MESS_ID, (self.service_file_dir,))

@@ -1,7 +1,7 @@
 import tkinter as tk
 
-from performers.expanded_tkinter import ExpandedTopLevel
-from dialog import Dialog
+from app.performer.expanded_tkinter import ExpandedTopLevel
+from app.window.dialog import Dialog
 
 class MenuPerformer():
     """The class for toolbar menu handling.
@@ -106,12 +106,12 @@ class MenuPerformer():
         config_file_menu = tk.Menu(master=master_menu, tearoff=0)
         config_file_menu.add_command(
             label='Изменить', 
-            command=lambda: self._set_network_credentials(master_menu),
+            command=lambda: self._show_creds_modal_window(master_menu,),
         )
         
         return config_file_menu
     
-    def _set_network_credentials(self, root):
+    def _show_creds_modal_window(self, root):
         """Sets the network credentials.
         
         Creates Toplevel dialog window with some elements 
@@ -134,8 +134,6 @@ class MenuPerformer():
         )
         modal_window.grab_set()
         
-        s_data = self.dp.service_data
-        
         label_username = tk.Label(
             master=modal_window,
             text='Имя пользователя',
@@ -146,7 +144,6 @@ class MenuPerformer():
             master=modal_window,
             width=modal_window.winfo_screenwidth(),
         )
-        entry_username.insert(0, s_data[self.dp.username_cred_key])
         entry_username.pack(anchor=tk.CENTER, padx=5)
         
         label_password = tk.Label(
@@ -160,29 +157,18 @@ class MenuPerformer():
             width=modal_window.winfo_screenwidth(),
             show='*',
         )
-        entry_password.insert(0, s_data[self.dp.password_cred_key])
         entry_password.pack(anchor=tk.CENTER, padx=5, pady=(0, 5))
         
         button = tk.Button(
             master=modal_window, 
             text='Изменить',
             width=12,
-            command=lambda: self._save_network_credentials(
-                event=None,
-                window=modal_window,
-                user=entry_username.get(),
-                passw=entry_password.get()
-            )
         )
         button.pack(side=tk.RIGHT, padx=5)
-        button.bind(
-                '<Return>', 
-                lambda e, 
-                window=modal_window, 
-                user=entry_username.get(),
-                passw=entry_password.get(): 
-                    self._save_network_credentials(e, window, user, passw)
-            )
+        
+        command = lambda e=None, window=modal_window, user=entry_username.get(), passw=entry_password.get(): self._save_network_credentials(e, window, user, passw)
+        button.config(command=command)
+        button.bind('<Return>', command)
         
         modal_window.wait_window()
         
@@ -247,12 +233,12 @@ class MenuPerformer():
             Thread(target=self._save_new_app_data, args=(root, filedir,)).start()
                     
     def _save_new_app_data(self, root, filedir):
-        from performers.network_performer import NetworkPerformer
+        from app.performer.network_performer import NetworkPerformer
         self.dp.server_device_name = NetworkPerformer(self.lp).get_network_device_identifier(filedir)
         serv_app_data = self.dp.load_application_data_from_server(filedir)
             
         if serv_app_data:
-            from validator import Validator
+            from app.util.validator import Validator
             validatable = Validator(self.lp).check_app_data(root, serv_app_data)
                 
             if validatable:
@@ -288,10 +274,10 @@ class MenuPerformer():
                 filepath=self.dp.updates_file_dir
             )
         )
-        help_menu.add_command(
-            label='Открыть логи',
-            command=lambda: self._show_log(root),
-        )
+        # help_menu.add_command(
+        #     label='Открыть логи',
+        #     command=lambda: self._show_log(root),
+        # )
         
         return help_menu
     
@@ -377,7 +363,7 @@ class MenuPerformer():
         modal_window.wait_window()
         
     def _show_log(self, root):
-        from performers.network_performer import NetworkPerformer
+        from app.performer.network_performer import NetworkPerformer
         filepath = f'{self.dp.get_base_path()}\\{self.dp.log_file_dir}'
         command = NetworkPerformer(self.lp).execute('win open file', file=filepath)
         

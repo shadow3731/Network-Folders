@@ -3,7 +3,7 @@ import _tkinter, re, subprocess
 
 import gevent.queue
 
-from dialog import Dialog
+from app.window.dialog import Dialog
 
 
 class ButtonsPerformer():
@@ -210,7 +210,7 @@ class ButtonsPerformer():
         from platform import system
         if system() == 'Windows':            
             try:
-                from performers.network_performer import NetworkPerformer
+                from app.performer.network_performer import NetworkPerformer
                 net_perf = NetworkPerformer(self.lp)
                 network_device_name = net_perf.get_network_device_identifier(path)
                 

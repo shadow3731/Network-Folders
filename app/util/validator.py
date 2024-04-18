@@ -194,7 +194,7 @@ class Validator():
             e (ValueError): Error description.
         """
         
-        from dialog import Dialog
+        from app.window.dialog import Dialog
         parts = '\n'.join(errors)
         message = f"Обнаружено недопустимое значение параметров в файле конфигурации. Будут выгружены значения из локального файла конфигурации.\n\n{parts}"
         

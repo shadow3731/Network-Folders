@@ -1,6 +1,6 @@
 import tkinter as tk
 
-from performers.expanded_tkinter import ExpandedTk, ExpandedCanvas, ExpandedFrame
+from app.performer.expanded_tkinter import ExpandedTk, ExpandedCanvas, ExpandedFrame
 
 
 class WindowFactory():
@@ -59,7 +59,7 @@ class WindowFactory():
         canvas.place(x=0, y=-5, relheight=1, relwidth=1)
         canvas.bind_scrolling()
             
-        from performers.menu_performer import MenuPerformer
+        from app.performer.menu_performer import MenuPerformer
         mp = MenuPerformer(canvas, data_perf, self.logs_perf)
         mp.show_menu(main_window)
         
@@ -69,7 +69,7 @@ class WindowFactory():
             height=canvas.winfo_screenheight(),
         )
         
-        from cursor import Cursor
+        from app.util.cursor import Cursor
         cursor = Cursor()
         cursor.save_default_values(
             init_x=app_data['window']['padding'],
@@ -85,7 +85,7 @@ class WindowFactory():
         
         cursor.load_deafault_values()
         
-        from performers.buttons_performer import ButtonsPerformer
+        from app.performer.buttons_performer import ButtonsPerformer
         buttons_perf = ButtonsPerformer(data_perf, self.logs_perf)
         buttons_pos = buttons_perf.configure_buttons(app_data, cursor)
         
@@ -96,7 +96,7 @@ class WindowFactory():
             
             cursor.load_deafault_values()
             
-            from performers.groups_performer import GroupsPerformer
+            from app.performer.groups_performer import GroupsPerformer
             groups_perf = GroupsPerformer(self.logs_perf)
             groups_pos = groups_perf.configure_groups(buttons_pos, cursor)
             
