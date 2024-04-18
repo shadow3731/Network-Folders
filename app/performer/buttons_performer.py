@@ -1,8 +1,6 @@
 import tkinter as tk
 import _tkinter, re, subprocess
 
-import gevent.queue
-
 from app.window.dialog import Dialog
 
 
@@ -258,7 +256,7 @@ class ButtonsPerformer():
                     
             except subprocess.CalledProcessError as e:
                 self._show_error(root, command_result=e)
-            except (subprocess.TimeoutExpired, gevent.Timeout) as e:
+            except subprocess.TimeoutExpired as e:
                 message = f'Превышено время ожидания ответа в {timeout} секунд.'
                 self._show_error(root, message)
                 # Dialog(self.lp).show_error(message, root)
