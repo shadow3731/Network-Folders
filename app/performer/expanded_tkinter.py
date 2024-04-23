@@ -40,13 +40,16 @@ class ExpandedTk(Tk):
         
         center(self, window_width, window_height)
         
-    def on_close(self, logs_perf=None, disabled_btn=False):
+    def on_close(self, logs_perf=None, data_perf=None, disabled_btn=False):
         if disabled_btn is False:
             logs_perf.log(logs_perf.INFO, logs_perf.DESTROY_ROOT_MESS_ID)
             
             self.destroy()
             
             logs_perf.log(logs_perf.INFO, logs_perf.DESTROY_ROOT_SUCC_MESS_ID)
+            
+            data_perf.delete_files((data_perf.service_file_dir, data_perf.data_file_dir))
+            logs_perf.clear_logs()
 
 class ExpandedTopLevel(Toplevel):
     def configure(self, **kwargs):

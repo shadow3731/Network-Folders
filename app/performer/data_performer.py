@@ -31,9 +31,9 @@ class DataPerformer():
         
         self.lp = lp
         
-        self.current_app_version = '1.7.1'
+        self.current_app_version = '1.8'
         self.suppotred_versions = (
-            '1.7', '1.7.1',
+            '1.7', '1.7.1', '1.8',
         )
         
         self.support_versions_key = 'supports'
@@ -259,6 +259,11 @@ class DataPerformer():
         
         with open(full_path, encoding='utf-8') as f:
             return f.read()
+        
+    def delete_files(self, filepaths):
+        for filepath in filepaths:
+            if os.path.exists(filepath):
+                os.remove(filepath)
     
     def _create_if_not_exists(self, target, filepath=None):
         """Creates file if it does not exist.

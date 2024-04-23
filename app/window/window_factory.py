@@ -52,7 +52,7 @@ class WindowFactory():
         
         main_window.protocol(
             'WM_DELETE_WINDOW', 
-            lambda: main_window.on_close(self.logs_perf)
+            lambda: main_window.on_close(self.logs_perf, data_perf)
         )
 
         canvas = ExpandedCanvas(main_window)

@@ -14,8 +14,10 @@ class LogsPerformer():
     def __init__(self, filename='log.log'):
         """Initializes LogsPerformer instance."""
         
+        self._filename = f'config\\{filename}'
+        
         file_handler = logging.FileHandler(
-            filename=f'config\\{filename}',
+            filename=self._filename,
             encoding='utf-8'
         )
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -31,6 +33,20 @@ class LogsPerformer():
             self.VER_LAUNCH_MESS_ID,
             self.TIME_LAUNCH_MESS_ID,
             self.WARN_TIME_LAUNCH_MESS_ID,
+            self.CHECK_UPDATER_MESS_ID,
+            self.FOUND_UPDATER_MESS_ID,
+            self.UPDATE_INSTALLED_MESS_ID,
+            self.NO_UPDATER_MESS_ID,
+            self.CHECK_NEW_VER_MESS_ID,
+            self.NO_NEW_VER_MESS_ID,
+            self.CHECK_RES_CODE_SUCC_MESS_ID,
+            self.CHECK_RES_CODE_FAIL_MESS_ID,
+            self.NEW_VER_MESS_ID,
+            self.DOWNLOAD_NEW_VER_MESS_ID,
+            self.DOWNLOAD_NEW_VER_RES_CODE_FAIL_MESS_ID,
+            self.DOWNLOAD_NEW_VER_RES_CODE_SUCC_MESS_ID,
+            self.DOWNLOAD_NEW_VER_SUCC_MESS_ID,
+            self.DOWNLOAD_NEW_VER_FAIL_MESS_ID,
             self.CREATE_LOADER_MESS_ID,
             self.DESTROY_LOADER_MESS_ID,
             self.CREATE_ROOT_MESS_ID,
@@ -111,7 +127,7 @@ class LogsPerformer():
             self.CONFIG_ROOT_WIDTH_ERR_MESS_ID,
             self.CONFIG_ROOT_SUCC_MESS_ID,
             self.APP_CLOSED_MESS_ID,
-        ) = range(84)
+        ) = range(98)
         
         self.message_map = {
             self.APP_LAUNCH_MESS_ID: (
@@ -126,6 +142,48 @@ class LogsPerformer():
             self.WARN_TIME_LAUNCH_MESS_ID: (
                 'Launch time should not be more than {} s. '
                 'Please check system performance.'
+            ),
+            self.CHECK_UPDATER_MESS_ID: (
+                'Checking for update file...'
+            ),
+            self.FOUND_UPDATER_MESS_ID: (
+                'Update file is found: {}.'
+            ),
+            self.UPDATE_INSTALLED_MESS_ID: (
+                'Update is installed. Application is ready to work.'
+            ),
+            self.NO_UPDATER_MESS_ID: (
+                'Update file is not found. Application will not update.'
+            ),
+            self.CHECK_NEW_VER_MESS_ID: (
+                'Checking for new version of application...'
+            ),
+            self.NO_NEW_VER_MESS_ID: (
+                'No new version of application is found.'
+            ),
+            self.CHECK_RES_CODE_SUCC_MESS_ID: (
+                'Response code of checking the new version is 200.'
+            ),
+            self.CHECK_RES_CODE_FAIL_MESS_ID: (
+                'Response code of checking the new version is {}.'
+            ),
+            self.NEW_VER_MESS_ID: (
+                'New version of application is found: {}.'
+            ),
+            self.DOWNLOAD_NEW_VER_MESS_ID: (
+                'Downloading the new version of application...'
+            ),
+            self.DOWNLOAD_NEW_VER_RES_CODE_SUCC_MESS_ID: (
+                'Response code of downloading the new version is 200.'
+            ),
+            self.DOWNLOAD_NEW_VER_RES_CODE_FAIL_MESS_ID: (
+                'Response code of downloading the new version is {}.'
+            ),
+            self.DOWNLOAD_NEW_VER_SUCC_MESS_ID: (
+                'New version of application is downloaded.'
+            ),
+            self.DOWNLOAD_NEW_VER_FAIL_MESS_ID: (
+                'New version of application is not downloaded.'
             ),
             self.CREATE_LOADER_MESS_ID: (
                 'Creating application loader window...'
@@ -388,6 +446,10 @@ class LogsPerformer():
         }
         
         log_functions.get(level, None)(self._get_message_by_id(message_id, vars))
+        
+    def clear_logs(self):
+        with open(self._filename, 'w', encoding='utf-8') as f:
+            f.write('')
         
     def _get_message_by_id(self, id, vars=None):
         """Compose a log message by the identifier.
