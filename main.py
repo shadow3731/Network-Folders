@@ -12,3 +12,6 @@ if __name__ == '__main__':
     
     from sys import exit
     exit(0)
+    
+    
+# внедрить автообновление программы
