@@ -6,7 +6,7 @@ if __name__ == '__main__':
     data_perf = app.update_or_get_data_performer()
     
     if data_perf:
-        app.start()
+        app.start(data_perf)
         
     app.release_lock()
     
