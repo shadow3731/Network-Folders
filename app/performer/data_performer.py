@@ -33,10 +33,12 @@ class DataPerformer():
         
         self.current_app_version = '1.8'
         self.suppotred_versions = (
-            '1.7', '1.7.1', '1.8',
+            self.current_app_version,
         )
         
+        self.first_launch_key = 'first_launch'
         self.support_versions_key = 'supports'
+        self.latest_version_key = 'latest_version'
         self.a_serv_data_key = 'app_server_data_file_path'
         self.a_serv_data_mtime_key = 'app_server_data_mtime'
         self.a_local_data_mtimte_key = 'app_local_data_mtime'
@@ -45,7 +47,9 @@ class DataPerformer():
         self.password_cred_key = 'password_credentials'
         
         self.valid_service_data_pattern = {
+            self.first_launch_key: True,
             self.support_versions_key: ', '.join(self.suppotred_versions),
+            self.latest_version_key: self.current_app_version,
             self.a_serv_data_key: '',
             self.a_serv_data_mtime_key: mktime((2000, 1, 1, 0, 0, 0, 0, 0, 0)),
             self.a_local_data_mtimte_key: mktime((2000, 1, 1, 0, 0, 0, 0, 0, 0)),
@@ -404,10 +408,18 @@ class DataPerformer():
         except FileNotFoundError:
             pass
         
+    def save_latest_version(self, version):
+        self.service_data[self.latest_version_key] = version
+        
+        self.save_service_data(self.service_data)
+        
+    def save_first_launch(self, status):
+        self.service_data[self.first_launch_key] = status
+        
+        self.save_service_data(self.service_data)
+        
     def get_base_path(self):        
         try:
-            # import sys
-            # return f'{sys._MEIPASS}\\Network Folders\\'
             return os.getcwd()
         except Exception:
             return os.path.abspath('.')

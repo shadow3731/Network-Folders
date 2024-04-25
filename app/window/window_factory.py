@@ -47,7 +47,7 @@ class WindowFactory():
         
         return main_window
     
-    def prepare_main(self, main_window, app_data, data_perf, threads):
+    def prepare_main(self, main_window, app_data, data_perf):
         self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.CONFIG_ROOT_MESS_ID)
         
         main_window.protocol(

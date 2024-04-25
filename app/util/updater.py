@@ -5,19 +5,18 @@ class Updater():
     def __init__(self, logs_perf):
         self._REPO_OWNER = 'shadow3731'
         self._REPO_NAME = 'Network-Folders'
-        
-        self.updatable = False
-        
+                
         self.logs_perf = logs_perf
         
-    def check_for_update(self, current_version):
+    def check_for_update(self, data_perf):
         self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.CHECK_NEW_VER_MESS_ID)
         
         release_info = self._fetch_latest_release()
         
         if release_info:
+            current_version = data_perf.current_app_version
             latest_version = release_info['tag_name']
-            
+                        
             if current_version != latest_version:
                 self.logs_perf.log(self.logs_perf.WARN, self.logs_perf.NEW_VER_MESS_ID, (latest_version,))
                 
@@ -29,8 +28,8 @@ class Updater():
                 if downloaded:
                     self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.DOWNLOAD_NEW_VER_SUCC_MESS_ID)
                 
-                    self.updatable = True
-                
+                    data_perf.save_latest_version(latest_version)
+            
                 else:
                     self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.DOWNLOAD_NEW_VER_FAIL_MESS_ID)
 
