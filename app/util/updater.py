@@ -1,4 +1,5 @@
-import os, requests
+import os
+from requests import get
 
 
 class Updater():
@@ -38,7 +39,7 @@ class Updater():
         
     def _fetch_latest_release(self):
         url = f'https://api.github.com/repos/{self._REPO_OWNER}/{self._REPO_NAME}/releases/latest'
-        response = requests.get(url)
+        response = get(url)
         
         if response.status_code == 200:
             self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.CHECK_RES_CODE_SUCC_MESS_ID)
@@ -51,7 +52,7 @@ class Updater():
             return None
     
     def _download_release_asset(self, asset_url, save_path):
-        response = requests.get(asset_url)
+        response = get(asset_url)
         
         if response.status_code == 200:
             self.logs_perf.log(self.logs_perf.INFO, self.logs_perf.DOWNLOAD_NEW_VER_RES_CODE_SUCC_MESS_ID)
