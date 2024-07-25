@@ -33,7 +33,7 @@ class DataPerformer():
         
         self.lp = lp
         
-        self.current_app_version = '1.8'
+        self.current_app_version = '1.8.1'
         self.suppotred_versions = (
             self.current_app_version,
         )
