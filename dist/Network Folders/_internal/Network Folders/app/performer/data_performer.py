@@ -63,7 +63,7 @@ class DataPerformer():
         self.service_file_dir = f'{self.__app_dir}/config/local_data.picke'
         self.data_file_dir = f'{self.__app_dir}/config/local_app_data.json'
         self.log_file_dir = f'{self.__app_dir}/config/log.log'
-        self.help_file_dir = f'{self.__app_dir}/contenthelp.txt'
+        self.help_file_dir = f'{self.__app_dir}/content/help.txt'
         self.updates_file_dir = f'{self.__app_dir}/content/updates.txt'
         self.icon_file_dir = f'{self.__app_dir}/icon.ico'
         

@@ -62,13 +62,14 @@ class Application():
             
             installer_file = 'Network Folders Setup.exe'
             updater_file = 'update.py'
+            copy_file = 'copy.py'
             
             import zipfile
             with zipfile.ZipFile(archive_file_dir, 'r') as zip_ref:
-                zip_ref.extractall('.', (installer_file, updater_file,))
+                zip_ref.extractall('.', (installer_file, updater_file, copy_file))
                 
             import subprocess
-            args = [archive_filename, installer_file, updater_file,]
+            args = [archive_filename, installer_file, updater_file, copy_file]
             subprocess.Popen(['python', updater_file] + args)
             
             main_window.destroy()
