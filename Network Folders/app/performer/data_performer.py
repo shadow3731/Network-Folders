@@ -1,7 +1,7 @@
 import json, pickle, os, threading
 from time import mktime
 
-from app.window.dialog import Dialog
+from ..window.dialog import Dialog
 
 
 class DataPerformer():
@@ -23,15 +23,17 @@ class DataPerformer():
         data_file_dir (str): the local application data directory.
     """
     
-    def __init__(self, root, lp=None):
+    def __init__(self, app_dir, root, lp=None):
         """Initializes DataPerformer instance."""
+
+        self.__app_dir = app_dir
         
         self.service_data = None
         self.server_device_name = None
         
         self.lp = lp
         
-        self.current_app_version = '1.8'
+        self.current_app_version = '1.8.1'
         self.suppotred_versions = (
             self.current_app_version,
         )
@@ -58,12 +60,12 @@ class DataPerformer():
             self.password_cred_key: '',
         }
         
-        self.service_file_dir = 'config\\local_data.picke'
-        self.data_file_dir = 'config\\local_app_data.json'
-        self.log_file_dir = 'config\\log.log'
-        self.help_file_dir = 'content\\help.txt'
-        self.updates_file_dir = 'content\\updates.txt'
-        self.icon_file_dir = 'icon.ico'
+        self.service_file_dir = f'{self.__app_dir}/config/local_data.picke'
+        self.data_file_dir = f'{self.__app_dir}/config/local_app_data.json'
+        self.log_file_dir = f'{self.__app_dir}/config/log.log'
+        self.help_file_dir = f'{self.__app_dir}/contenthelp.txt'
+        self.updates_file_dir = f'{self.__app_dir}/content/updates.txt'
+        self.icon_file_dir = f'{self.__app_dir}/icon.ico'
         
         self.root = root
                 
