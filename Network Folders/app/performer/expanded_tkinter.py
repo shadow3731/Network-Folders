@@ -48,8 +48,8 @@ class ExpandedTk(Tk):
             
             logs_perf.log(logs_perf.INFO, logs_perf.DESTROY_ROOT_SUCC_MESS_ID)
             
-            data_perf.delete_files((data_perf.service_file_dir, data_perf.data_file_dir))
-            logs_perf.clear_logs()
+            # data_perf.delete_files((data_perf.service_file_dir, data_perf.data_file_dir))
+            # logs_perf.clear_logs()
 
 class ExpandedTopLevel(Toplevel):
     def configure(self, **kwargs):
